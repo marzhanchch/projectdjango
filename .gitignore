@@ -1,0 +1,10 @@
+
+outpeer/db.sqlite3
+
+__pycache__/
+*.pyc
+
+venv/
+
+outpeer/users/migrations/__pycache__/
+
