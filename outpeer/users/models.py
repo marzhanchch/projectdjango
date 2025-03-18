@@ -36,3 +36,12 @@ class User(AbstractBaseUser, PermissionsMixin):
     def __str__(self):
         return self.email
 
+
+
+class Course(models.Model):
+    name = models.CharField(max_length=255)
+    description = models.TextField(blank=True, null=True)
+    students = models.ManyToManyField(User, related_name='courses')
+
+    def __str__(self):
+        return self.name
