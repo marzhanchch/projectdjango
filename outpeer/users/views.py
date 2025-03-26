@@ -7,13 +7,17 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework.generics import ListAPIView
 from rest_framework.pagination import PageNumberPagination
+from rest_framework_simplejwt.tokens import RefreshToken
+from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
 from django.contrib.auth import get_user_model
+from django.contrib.auth import authenticate
+from django.urls import path
 from .models import User
 from .serializers import RegisterSerializer, UserSerializer
 
 User = get_user_model()
 
-# Регистрация пользователя с подтверждением по email
+
 class RegisterView(APIView):
     def post(self, request):
         serializer = RegisterSerializer(data=request.data)
@@ -33,7 +37,7 @@ class RegisterView(APIView):
             return Response({"message": "Код отправлен на email"}, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
-# Подтверждение кода
+
 class VerifyCodeView(APIView):
     def post(self, request):
         email = request.data.get("email")
@@ -45,8 +49,8 @@ class VerifyCodeView(APIView):
         try:
             user = User.objects.get(email=email)
             if user.verification_code == int(code):
-                user.is_active = True  # Активируем пользователя
-                user.verification_code = ""  # Очищаем код
+                user.is_active = True  
+                user.verification_code = ""  
                 user.save()
                 return Response({"message": "Аккаунт подтверждён"}, status=status.HTTP_200_OK)
             else:
@@ -54,13 +58,35 @@ class VerifyCodeView(APIView):
         except User.DoesNotExist:
             return Response({"error": "Пользователь не найден"}, status=status.HTTP_404_NOT_FOUND)
 
-# Пагинация и просмотр пользователей
+
+class LoginView(APIView):
+    def post(self, request):
+        email = request.data.get("email")
+        password = request.data.get("password")
+        user = authenticate(email=email, password=password)
+        if user is not None:
+            refresh = RefreshToken.for_user(user)
+            return Response({
+                "refresh": str(refresh),
+                "access": str(refresh.access_token),
+            }, status=status.HTTP_200_OK)
+        return Response({"error": "Неверные учетные данные"}, status=status.HTTP_401_UNAUTHORIZED)
+
+
 class CustomPagination(PageNumberPagination):
     page_size = 5
     page_size_query_param = "page_size"
     max_page_size = 100
 
+
 class UserListView(ListAPIView):
     queryset = User.objects.all()
     serializer_class = UserSerializer
     pagination_class = CustomPagination
+
+
+
+urlpatterns = [
+    path('token/', TokenObtainPairView.as_view(), name='token_obtain_pair'),
+    path('token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
+]
